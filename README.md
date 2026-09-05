@@ -1,172 +1,217 @@
 # Quota Flow
 
-Quota Flow is a Java-based multi-tenant resource metering, quota enforcement and cost-allocation platform. It protects shared SaaS infrastructure by measuring each customer's usage in real time, warning at configurable thresholds, blocking requests beyond hard limits and producing billing-ready reports.
+Quota Flow is a multi-tenant resource quota and cost-allocation platform built for SaaS and cloud-infrastructure teams. It tracks each tenant's API requests, storage, compute time, and background jobs; enforces configurable limits; raises live alerts; and produces billing-ready usage summaries.
 
-## Real-world example
+## Live deployment
 
-ABC Logistics receives 10,000 parcel-tracking API requests per month. Quota Flow records each request, warns the tenant at 80%, marks usage critical at 90%, and atomically blocks usage beyond 100%. The tenant sees only its own usage and invoice; the Platform Admin manages all tenants, plans and compliance data.
+- Backend API: https://quota-flow.onrender.com
+- Health check: https://quota-flow.onrender.com/api/health
+- Source code: https://github.com/Tejashribambal19/quota-flow
 
-## Highlights
+> The Render free instance can take about 50 seconds to wake after inactivity. The user interface is a JavaFX desktop application, so the backend URL displays API responses rather than a website.
 
-- One JavaFX application with role-based Platform Admin and Tenant Admin dashboards
-- JWT authentication, BCrypt passwords and tenant isolation
-- Atomic Redis Lua quota enforcement under concurrent load
-- PostgreSQL persistence for users, tenants, plans, usage events and audit logs
-- Normal, warning, critical and blocked quota states
-- Monthly counter isolation and automatic period rollover
-- Billing and cost-allocation reports
-- Downloadable PDF invoices
-- Tamper-evident SHA-256 chained audit trail
-- Usage charts, alerts, sidebar navigation and live simulator
-- Admin forms for adding subscription plans and tenants
-- Clean JSON error responses
-- Docker, one-click startup and Windows packaging scripts
+## Key features
+
+- Multi-tenant isolation with platform-admin and tenant-admin roles
+- JWT authentication and role-based API authorization
+- Per-tenant quota tracking for four resource categories
+- Atomic near-real-time usage metering backed by Redis
+- PostgreSQL system of record for tenants, plans, users, events, and billing data
+- Normal, warning, critical, and blocked quota states
+- Idempotent usage requests using request identifiers
+- Live usage simulator, alerts, progress indicators, and analytics chart
+- Subscription-plan and tenant creation from the admin console
+- Billing summaries and downloadable PDF invoices
+- Tamper-evident audit-chain verification
+- Monthly quota-cycle reset support
+- Docker-based local infrastructure and Render cloud deployment
 
 ## Architecture
 
 ```mermaid
-flowchart LR
-    UI[JavaFX Desktop] -->|JWT + REST| API[Spring Boot API]
-    API --> PG[(PostgreSQL)]
-    API --> Redis[(Redis counters)]
-    API --> PDF[PDF invoices]
-    SIM[Usage simulator] --> API
+flowchart TD
+    UI[JavaFX Desktop Client] -->|HTTPS + JWT| API[Spring Boot REST API]
+    API --> AUTH[Authentication and RBAC]
+    API --> METER[Quota Metering Service]
+    API --> REPORT[Reporting and Billing]
+    METER --> REDIS[(Redis Counters)]
+    METER --> DB[(PostgreSQL)]
+    AUTH --> DB
+    REPORT --> DB
 ```
 
-PostgreSQL is the permanent system of record. Redis holds high-speed monthly counters. Every accepted and denied usage decision is also persisted in PostgreSQL for reconciliation.
+## Technology stack
 
-## Technology
+| Layer | Technologies |
+|---|---|
+| Desktop | Java 17, JavaFX, CSS, Java HTTP Client |
+| Backend | Java 17, Spring Boot, Spring Security, Spring Data JPA |
+| Security | JWT, BCrypt, role-based authorization |
+| Data | PostgreSQL 17, Redis 7.4 |
+| Build | Maven |
+| Infrastructure | Docker Compose, Docker |
+| Deployment | Render Web Service, Render PostgreSQL, Render Key Value |
 
-- Java 17
-- Spring Boot 4.1.1, Spring MVC, Spring Security, Spring Data JPA
-- PostgreSQL 17 and Redis 7.4
-- JavaFX 21
-- Maven, Docker Compose, JWT and Hibernate
+## User roles
 
-## Project structure
+| Role | Access |
+|---|---|
+| `PLATFORM_ADMIN` | Manage subscription plans and tenants, view platform statistics, and verify the audit chain |
+| `TENANT_ADMIN` | Monitor the tenant's quota usage, simulate activity, view alerts and analytics, and download invoices |
 
-```text
-quota-platform/
-├── backend/                 Spring Boot REST API
-├── desktop-client/          JavaFX application
-├── docker-compose.yml       PostgreSQL and Redis
-├── docker-compose.full.yml  Containerized full backend stack
-├── start-quota-flow.ps1     One-click local startup
-├── simulate-usage.ps1       Realistic usage generator
-├── package-windows.ps1      Windows JavaFX packager
-└── DEMO_CHECKLIST.md        Hackathon presentation flow
-```
+## Demo accounts
 
-## Quick start on Windows
-
-Prerequisites: JDK 17+, Maven, Docker Desktop and PowerShell.
-
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\start-quota-flow.ps1
-```
-
-Manual startup:
-
-```powershell
-docker compose up -d
-cd backend
-.\mvnw.cmd spring-boot:run
-```
-
-In another terminal:
-
-```powershell
-cd desktop-client
-mvn javafx:run
-```
-
-## Demo users
-
-| Role | Email | Local demo password |
+| Role | Email | Password |
 |---|---|---|
 | Platform Admin | `admin@quotaplatform.com` | `Admin@12345` |
 | Tenant Admin | `admin@abclogistics.com` | `Tenant@12345` |
 
-These credentials are demo data only. Do not use them in production.
+These credentials are provided only for the hackathon demo. Replace them before using the application in a production environment.
 
-## Generate live data
+## Prerequisites
 
-Keep Docker and the backend running:
+- Java Development Kit 17
+- Maven 3.9 or newer
+- Docker Desktop with Docker Compose
+- Git
+
+## Run the project locally
+
+### 1. Clone the repository
 
 ```powershell
-.\simulate-usage.ps1 -Events 25
+git clone https://github.com/Tejashribambal19/quota-flow.git
+cd quota-flow
 ```
 
-You can also generate one event inside the Tenant Admin dashboard. Events are written to Redis and PostgreSQL.
+### 2. Start PostgreSQL and Redis
 
-## Tests
+```powershell
+docker compose up -d
+docker compose ps
+```
+
+### 3. Start the backend
+
+Open a new PowerShell terminal:
 
 ```powershell
 cd backend
-.\mvnw.cmd test
+
+$bytes = New-Object byte[] 64
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$rng.GetBytes($bytes)
+$env:JWT_SECRET = [Convert]::ToBase64String($bytes)
+
+mvn spring-boot:run
 ```
 
-The suite verifies application startup, atomic concurrent quota enforcement and monthly counter isolation.
-
-## Package JavaFX for Windows
-
-`jpackage` is included with modern JDK installations:
+Verify the backend:
 
 ```powershell
-.\package-windows.ps1
+Invoke-RestMethod "http://localhost:8080/api/health"
 ```
 
-Output:
+### 4. Start the JavaFX client
+
+Open another PowerShell terminal:
+
+```powershell
+cd desktop-client
+mvn clean compile
+mvn javafx:run
+```
+
+## Run the desktop client with the cloud backend
+
+```powershell
+cd desktop-client
+$env:QUOTA_API_URL = "https://quota-flow.onrender.com/api"
+mvn javafx:run
+```
+
+## Configuration
+
+The backend reads secrets and service locations from environment variables.
+
+| Variable | Purpose | Local default |
+|---|---|---|
+| `DB_URL` | PostgreSQL JDBC URL | `jdbc:postgresql://localhost:5432/quota_platform` |
+| `DB_USERNAME` | PostgreSQL username | `quota_user` |
+| `DB_PASSWORD` | PostgreSQL password | `quota_secret` |
+| `REDIS_URL` | Redis connection URL | `redis://localhost:6379` |
+| `JWT_SECRET` | Base64-encoded JWT signing key | Required |
+| `JWT_EXPIRATION_MS` | Token lifetime | `86400000` |
+| `PORT` | HTTP port | `8080` |
+| `QUOTA_API_URL` | API used by the JavaFX client | `http://localhost:8080/api` |
+
+Never commit real passwords, private database URLs, or JWT secrets.
+
+## Main API endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/health` | Service health check |
+| `POST` | `/api/auth/login` | Authenticate a user |
+| `POST` | `/api/auth/register` | Register an authorized user |
+| `GET/POST` | `/api/plans` | List or create plans |
+| `GET/POST` | `/api/tenants` | List or create tenants |
+| `POST` | `/api/usage/{tenantId}/consume` | Consume a resource quota |
+| `GET` | `/api/reports/tenants/{tenantId}/usage` | Tenant usage summary |
+| `GET` | `/api/audit/verify` | Verify audit-chain integrity |
+
+## Testing
+
+Run backend tests:
+
+```powershell
+cd backend
+mvn clean test
+```
+
+Compile the desktop application:
+
+```powershell
+cd desktop-client
+mvn clean compile
+```
+
+## Demo flow
+
+1. Sign in as the platform administrator.
+2. Show the registered tenants, subscription plans, and audit-chain status.
+3. Sign out and sign in as the ABC Logistics tenant administrator.
+4. Show the current quota cards, live alerts, and utilization chart.
+5. Simulate storage, API, compute, or background-job usage.
+6. Refresh the dashboard and demonstrate that usage and cost change.
+7. Attempt to exceed a hard limit to demonstrate quota enforcement.
+8. Download the PDF invoice.
+
+## Project structure
 
 ```text
-desktop-client\target\installer\QuotaFlow\QuotaFlow.exe
+quota-flow/
+â”œâ”€â”€ backend/          Spring Boot REST API
+â”œâ”€â”€ desktop-client/   JavaFX desktop application
+â”œâ”€â”€ docker-compose.yml
+â””â”€â”€ README.md
 ```
 
-## Important API routes
+## Production considerations
 
-| Method | Route | Purpose |
-|---|---|---|
-| POST | `/api/auth/login` | Authenticate and receive JWT |
-| GET/POST | `/api/plans` | Read or create subscription plans |
-| GET/POST | `/api/tenants` | Platform tenant management |
-| POST | `/api/usage/{tenantId}/consume` | Atomically consume quota |
-| GET | `/api/usage/{tenantId}/events` | Recent persisted usage events |
-| GET | `/api/reports/tenants/{tenantId}/usage` | Usage summary |
-| GET | `/api/reports/tenants/{tenantId}/billing` | Billing report |
-| GET | `/api/reports/tenants/{tenantId}/invoice.pdf` | Download invoice |
-| GET | `/api/audit/verify` | Verify audit chain |
-
-## Deployment
-
-1. Copy `.env.example` to `.env` and replace every secret.
-2. Build locally with `docker compose -f docker-compose.full.yml up --build`.
-3. Deploy the backend container to Render, Railway, Azure, AWS or another container host.
-4. Provision managed PostgreSQL and Redis and set `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `REDIS_PORT`, `JWT_SECRET` and `PORT`.
-5. Change `ApiClient.BASE_URL` to the deployed backend URL before packaging JavaFX.
-
-Never commit `.env`, production credentials, JWTs or database volumes.
-
-## GitHub publication
-
-```powershell
-git init
-git add .
-git commit -m "Build Quota Flow multi-tenant quota platform"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/quota-flow.git
-git push -u origin main
-```
-
-## Future production enhancements
-
-- Refresh tokens and account-password management
-- Flyway database migrations instead of `ddl-auto: update`
-- Email/Slack quota notifications
-- Persistent invoice lifecycle and payment integration
-- Metrics, tracing and centralized logs
-- TLS, secret manager and rate limiting
+- Disable public user registration and use an administrator-controlled onboarding flow.
+- Replace all demo credentials.
+- Use managed secrets and rotate exposed credentials immediately.
+- Add HTTPS certificate validation, rate limiting, monitoring, and backups.
+- Use database migrations such as Flyway instead of automatic schema updates.
+- Add integration, load, concurrency, and security tests.
 
 ## Author
 
-Tejashri Bambal
+**Tejashri Bambal**
+
+- GitHub: https://github.com/Tejashribambal19
+
+## License
+
+This project was created as a hackathon demonstration. Add a license before reuse or distribution.
