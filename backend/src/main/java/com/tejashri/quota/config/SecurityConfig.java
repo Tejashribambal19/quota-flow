@@ -35,8 +35,8 @@ public class SecurityConfig {
 
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider provider
+                = new DaoAuthenticationProvider(userDetailsService);
 
         provider.setPasswordEncoder(passwordEncoder());
 
@@ -57,27 +57,22 @@ public class SecurityConfig {
 
         http
                 .cors(Customizer.withDefaults())
-
                 .csrf(csrf -> csrf.disable())
-
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
-                        )
+                .sessionManagement(session
+                        -> session.sessionCreationPolicy(
+                        SessionCreationPolicy.STATELESS
                 )
-
+                )
                 .authenticationProvider(authenticationProvider())
-
                 .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(
+                        (request, response, exception) -> {
+                            response.setStatus(401);
+                            response.setContentType(
+                                    MediaType.APPLICATION_JSON_VALUE
+                            );
 
-                        .authenticationEntryPoint(
-                                (request, response, exception) -> {
-                                    response.setStatus(401);
-                                    response.setContentType(
-                                            MediaType.APPLICATION_JSON_VALUE
-                                    );
-
-                                    String body = """
+                            String body = """
                                             {
                                               "timestamp": "%s",
                                               "status": 401,
@@ -86,22 +81,21 @@ public class SecurityConfig {
                                               "path": "%s"
                                             }
                                             """.formatted(
-                                            Instant.now(),
-                                            request.getRequestURI()
-                                    );
+                                    Instant.now(),
+                                    request.getRequestURI()
+                            );
 
-                                    response.getWriter().write(body);
-                                }
-                        )
+                            response.getWriter().write(body);
+                        }
+                )
+                .accessDeniedHandler(
+                        (request, response, exception) -> {
+                            response.setStatus(403);
+                            response.setContentType(
+                                    MediaType.APPLICATION_JSON_VALUE
+                            );
 
-                        .accessDeniedHandler(
-                                (request, response, exception) -> {
-                                    response.setStatus(403);
-                                    response.setContentType(
-                                            MediaType.APPLICATION_JSON_VALUE
-                                    );
-
-                                    String body = """
+                            String body = """
                                             {
                                               "timestamp": "%s",
                                               "status": 403,
@@ -110,69 +104,60 @@ public class SecurityConfig {
                                               "path": "%s"
                                             }
                                             """.formatted(
-                                            Instant.now(),
-                                            request.getRequestURI()
-                                    );
+                                    Instant.now(),
+                                    request.getRequestURI()
+                            );
 
-                                    response.getWriter().write(body);
-                                }
-                        )
+                            response.getWriter().write(body);
+                        }
                 )
-
+                )
                 .authorizeHttpRequests(auth -> auth
-
-                        .requestMatchers(
-                                HttpMethod.OPTIONS,
-                                "/**"
-                        ).permitAll()
-
-                        .requestMatchers(
-                                "/api/health"
-                        ).permitAll()
-
-                        .requestMatchers(
-                                "/api/auth/**"
-                        ).permitAll()
-
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/plans/**"
-                        ).hasRole("PLATFORM_ADMIN")
-
-                        .requestMatchers(
-                                HttpMethod.PUT,
-                                "/api/plans/**"
-                        ).hasRole("PLATFORM_ADMIN")
-
-                        .requestMatchers(
-                                HttpMethod.DELETE,
-                                "/api/plans/**"
-                        ).hasRole("PLATFORM_ADMIN")
-
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/api/plans/**"
-                        ).authenticated()
-
-                        .requestMatchers(
-                                "/api/tenants/**"
-                        ).hasRole("PLATFORM_ADMIN")
-
-                        .requestMatchers(
-                                "/api/usage/**"
-                        ).authenticated()
-
-                        .requestMatchers(
-                                "/api/reports/**"
-                        ).authenticated()
-
-                        .requestMatchers(
-                                "/api/audit/**"
-                        ).hasRole("PLATFORM_ADMIN")
-
-                        .anyRequest().authenticated()
+                .requestMatchers(
+                        HttpMethod.OPTIONS,
+                        "/**"
+                ).permitAll()
+                .requestMatchers(
+                        "/api/health"
+                ).permitAll()
+                .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/auth/login"
+                ).permitAll()
+                .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/auth/register"
+                ).hasRole("PLATFORM_ADMIN")
+                .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/plans/**"
+                ).hasRole("PLATFORM_ADMIN")
+                .requestMatchers(
+                        HttpMethod.PUT,
+                        "/api/plans/**"
+                ).hasRole("PLATFORM_ADMIN")
+                .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/plans/**"
+                ).hasRole("PLATFORM_ADMIN")
+                .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/plans/**"
+                ).authenticated()
+                .requestMatchers(
+                        "/api/tenants/**"
+                ).hasRole("PLATFORM_ADMIN")
+                .requestMatchers(
+                        "/api/usage/**"
+                ).authenticated()
+                .requestMatchers(
+                        "/api/reports/**"
+                ).authenticated()
+                .requestMatchers(
+                        "/api/audit/**"
+                ).hasRole("PLATFORM_ADMIN")
+                .anyRequest().authenticated()
                 )
-
                 .addFilterBefore(
                         jwtFilter,
                         UsernamePasswordAuthenticationFilter.class
