@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -55,6 +56,8 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
+                .cors(Customizer.withDefaults())
+
                 .csrf(csrf -> csrf.disable())
 
                 .sessionManagement(session ->
@@ -67,54 +70,70 @@ public class SecurityConfig {
 
                 .exceptionHandling(exceptions -> exceptions
 
-                        .authenticationEntryPoint((request, response, exception) -> {
-                            response.setStatus(401);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                        .authenticationEntryPoint(
+                                (request, response, exception) -> {
+                                    response.setStatus(401);
+                                    response.setContentType(
+                                            MediaType.APPLICATION_JSON_VALUE
+                                    );
 
-                            String body = """
-                                    {
-                                      "timestamp": "%s",
-                                      "status": 401,
-                                      "error": "Unauthorized",
-                                      "message": "Authentication is required or the token is invalid",
-                                      "path": "%s"
-                                    }
-                                    """.formatted(
-                                    Instant.now(),
-                                    request.getRequestURI()
-                            );
+                                    String body = """
+                                            {
+                                              "timestamp": "%s",
+                                              "status": 401,
+                                              "error": "Unauthorized",
+                                              "message": "Authentication is required or the token is invalid",
+                                              "path": "%s"
+                                            }
+                                            """.formatted(
+                                            Instant.now(),
+                                            request.getRequestURI()
+                                    );
 
-                            response.getWriter().write(body);
-                        })
+                                    response.getWriter().write(body);
+                                }
+                        )
 
-                        .accessDeniedHandler((request, response, exception) -> {
-                            response.setStatus(403);
-                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                        .accessDeniedHandler(
+                                (request, response, exception) -> {
+                                    response.setStatus(403);
+                                    response.setContentType(
+                                            MediaType.APPLICATION_JSON_VALUE
+                                    );
 
-                            String body = """
-                                    {
-                                      "timestamp": "%s",
-                                      "status": 403,
-                                      "error": "Forbidden",
-                                      "message": "You do not have permission to access this resource",
-                                      "path": "%s"
-                                    }
-                                    """.formatted(
-                                    Instant.now(),
-                                    request.getRequestURI()
-                            );
+                                    String body = """
+                                            {
+                                              "timestamp": "%s",
+                                              "status": 403,
+                                              "error": "Forbidden",
+                                              "message": "You do not have permission to access this resource",
+                                              "path": "%s"
+                                            }
+                                            """.formatted(
+                                            Instant.now(),
+                                            request.getRequestURI()
+                                    );
 
-                            response.getWriter().write(body);
-                        })
+                                    response.getWriter().write(body);
+                                }
+                        )
                 )
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/health").permitAll()
 
-                        // Registration and login do not require JWT.
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                HttpMethod.OPTIONS,
+                                "/**"
+                        ).permitAll()
 
-                        // Only platform administrators can create/update plans.
+                        .requestMatchers(
+                                "/api/health"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                "/api/auth/**"
+                        ).permitAll()
+
                         .requestMatchers(
                                 HttpMethod.POST,
                                 "/api/plans/**"
@@ -130,18 +149,15 @@ public class SecurityConfig {
                                 "/api/plans/**"
                         ).hasRole("PLATFORM_ADMIN")
 
-                        // Authenticated users can read plans.
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/plans/**"
                         ).authenticated()
 
-                        // Only platform administrators manage tenants.
                         .requestMatchers(
                                 "/api/tenants/**"
                         ).hasRole("PLATFORM_ADMIN")
 
-                        // Usage and reports require authentication.
                         .requestMatchers(
                                 "/api/usage/**"
                         ).authenticated()
@@ -150,7 +166,6 @@ public class SecurityConfig {
                                 "/api/reports/**"
                         ).authenticated()
 
-                        // Only platform administrators inspect audit logs.
                         .requestMatchers(
                                 "/api/audit/**"
                         ).hasRole("PLATFORM_ADMIN")
