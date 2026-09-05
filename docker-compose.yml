@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: quota-postgres
+    environment:
+      POSTGRES_DB: quota_platform
+      POSTGRES_USER: quota_user
+      POSTGRES_PASSWORD: quota_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - quota_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quota_user -d quota_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: quota-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - quota_redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  quota_postgres_data:
+  quota_redis_data:

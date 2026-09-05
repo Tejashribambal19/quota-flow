@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: quota-platform-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/quota_platform}
+    username: ${DB_USERNAME:quota_user}
+    password: ${DB_PASSWORD:quota_secret}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: ${SHOW_SQL:false}
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+
+server:
+  port: ${PORT:8080}
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}

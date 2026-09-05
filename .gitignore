@@ -1,0 +1,28 @@
+# Maven
+**/target/
+.mvn/timing.properties
+
+# IDE
+.vscode/
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+
+# Logs
+*.log
+compile-error.txt
+startup-error.txt
+
+# Environment variables and secrets
+.env
+*.env
+application-local.yaml
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Generated invoices
+*.pdf
