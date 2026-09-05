@@ -4,6 +4,7 @@ Quota Flow is a multi-tenant resource quota and cost-allocation platform built f
 
 ## Live deployment
 
+- Web application: https://quota-flow-ui.onrender.com/
 - Backend API: https://quota-flow.onrender.com
 - Health check: https://quota-flow.onrender.com/api/health
 - Source code: https://github.com/Tejashribambal19/quota-flow
