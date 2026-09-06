@@ -27,6 +27,20 @@ Quota Flow is a multi-tenant resource quota and cost-allocation platform built f
 - Monthly quota-cycle reset support
 - Docker-based local infrastructure and Render cloud deployment
 
+## Screenshots
+
+### Login
+
+![Quota Flow login](docs/screenshots/login.png)
+
+### Platform administration
+
+![Platform administration dashboard](docs/screenshots/platform-dashboard.png)
+
+### Tenant usage and billing
+
+![Tenant usage dashboard](docs/screenshots/tenant-dashboard.png)
+
 ## Architecture
 
 ```mermaid
